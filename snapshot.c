@@ -1,6 +1,58 @@
 #include <lua.h>
 #include <lauxlib.h>
 
+static void mark_object(lua_State *L, lua_State *dL, const void * parent, const char * desc);
+
+#if LUA_VERSION_NUM == 501
+
+static void
+luaL_checkversion(lua_State *L) {
+	if (lua_pushthread(L) == 0) {
+		luaL_error(L, "Must require in main thread");
+	}
+	lua_setfield(L, LUA_REGISTRYINDEX, "mainthread");
+}
+
+static void
+lua_rawsetp(lua_State *L, int idx, const void *p) {
+	if (idx < 0) {
+		idx += lua_gettop(L) + 1;
+	}
+	lua_pushlightuserdata(L, (void *)p);
+	lua_insert(L, -2);
+	lua_rawset(L, idx);
+}
+
+static void
+lua_rawgetp(lua_State *L, int idx, const void *p) {
+	if (idx < 0) {
+		idx += lua_gettop(L) + 1;
+	}
+	lua_pushlightuserdata(L, (void *)p);
+	lua_rawget(L, idx);
+}
+
+static void
+lua_getuservalue(lua_State *L, int idx) {
+	lua_getfenv(L, idx);
+}
+
+static void
+mark_function_env(lua_State *L, lua_State *dL, const void * t) {
+	lua_getfenv(L,-1);
+	if (lua_istable(L,-1)) {
+		mark_object(L, dL, t, "[environment]");
+	} else {
+		lua_pop(L,1);
+	}
+}
+
+#else
+
+#define mark_function_env(L,dL,t)
+
+#endif
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -65,8 +117,6 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 
 	return p;
 }
-
-static void mark_object(lua_State *L, lua_State *dL, const void * parent, const char * desc);
 
 static const char *
 keystring(lua_State *L, int index, char * buffer) {
@@ -157,6 +207,7 @@ mark_function(lua_State *L, lua_State *dL, const void * parent, const char *desc
 	if (t == NULL)
 		return;
 
+	mark_function_env(L,dL,t);
 	int i;
 	for (i=1;;i++) {
 		const char *name = lua_getupvalue(L,-1,i);
