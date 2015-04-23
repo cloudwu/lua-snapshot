@@ -162,6 +162,7 @@ mark_table(lua_State *L, lua_State *dL, const void * parent, const char * desc) 
 		}
 		lua_pop(L,1);
 
+		luaL_checkstack(L, LUA_MINSTACK, NULL);
 		mark_table(L, dL, t, "[metatable]");
 	}
 
@@ -279,6 +280,7 @@ mark_thread(lua_State *L, lua_State *dL, const void * parent, const char *desc) 
 
 static void 
 mark_object(lua_State *L, lua_State *dL, const void * parent, const char *desc) {
+	luaL_checkstack(L, LUA_MINSTACK, NULL);
 	int t = lua_type(L, -1);
 	switch (t) {
 	case LUA_TTABLE:
