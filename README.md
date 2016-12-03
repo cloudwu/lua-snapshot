@@ -8,11 +8,12 @@ See dump.lua for example.
 Build
 =====
 
-make linux 
+make linux
 
-or 
+or
 
 make mingw (in windows)
 
+or
 
-
+make macosx
