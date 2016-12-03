@@ -246,6 +246,17 @@ mark_thread(lua_State *L, lua_State *dL, const void * parent, const char *desc) 
 	lua_State *cL = lua_tothread(L,-1);
 	if (cL == L) {
 		level = 1;
+	} else {
+		// mark stack
+		int top = lua_gettop(cL);
+		luaL_checkstack(cL, 1, NULL);
+		int i;
+		char tmp[16];
+		for (i=0;i<top;i++) {
+			lua_pushvalue(cL, i+1);
+			sprintf(tmp, "[%d]", i+1);
+			mark_object(cL, dL, cL, tmp);
+		}
 	}
 	lua_Debug ar;
 	luaL_Buffer b;
