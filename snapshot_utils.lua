@@ -63,16 +63,23 @@ local unwanted_key = {
     --key = 1,
     parent = 1,
 }
-local function cleanup_forest(forest)
-    for k, v in pairs(forest) do
-        if unwanted_key[k] then
-            forest[k] = nil
-        else
-            if type(v) == "table" then
-                cleanup_forest(v)
-            end
+local function cleanup_forest(input)
+    local cache = {[input] = "."}
+    local function _clean(forest)
+        if cache[forest] then
+            return
         end
-    end
+        for k, v in pairs(forest) do
+            if unwanted_key[k] then
+                forest[k] = nil
+            else
+                if type(v) == "table" then
+                    cleanup_forest(v)
+                end
+             end
+         end
+	end
+    return _clean(input)
 end
 
 local M = {}
@@ -81,7 +88,7 @@ function M.construct_indentation(input_diff)
     local forest, count = reduce(clean_diff)
     local new_forest, new_count = reduce(forest)
     while new_count ~= count do
-        forest, count = new_forest, new_count
+        count = new_count
         new_forest, new_count = reduce(new_forest)
     end
     cleanup_forest(new_forest)
