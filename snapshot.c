@@ -1,6 +1,12 @@
 #include <lua.h>
 #include <lauxlib.h>
 
+#if defined(_WIN32)
+	#define EXPORT_API __declspec(dllexport)
+#else
+	#define EXPORT_API
+#endif // _WIN32
+
 static void mark_object(lua_State *L, lua_State *dL, const void * parent, const char * desc);
 
 #if LUA_VERSION_NUM == 501
@@ -402,7 +408,7 @@ snapshot(lua_State *L) {
 	return 1;
 }
 
-int
+EXPORT_API int
 luaopen_snapshot(lua_State *L) {
 	luaL_checkversion(L);
 	lua_pushcfunction(L, snapshot);
