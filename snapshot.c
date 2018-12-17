@@ -99,6 +99,12 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 	}
 
 	const void * p = lua_topointer(L, -1);
+	if (p == NULL)
+	{
+		lua_pop(L, 1);
+		return NULL;
+	}
+
 	if (ismarked(dL, p)) {
 		lua_rawgetp(dL, tidx, p);
 		if (!lua_isnil(dL,-1)) {
