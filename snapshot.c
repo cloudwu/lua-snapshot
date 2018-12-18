@@ -47,9 +47,23 @@ mark_function_env(lua_State *L, lua_State *dL, const void * t) {
 	}
 }
 
+// lua 5.1 has no light c function
+#define is_lightcfunction(L, idx) (0)
+
 #else
 
 #define mark_function_env(L,dL,t)
+
+static int
+is_lightcfunction(lua_State *L, int idx) {
+	if (lua_iscfunction(L, idx)) {
+		if (lua_getupvalue(L, idx, 1) == NULL) {
+			return 1;
+		}
+		lua_pop(L, 1);
+	}
+	return 0;
+}
 
 #endif
 
@@ -86,6 +100,10 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 		tidx = TABLE;
 		break;
 	case LUA_TFUNCTION:
+		if (is_lightcfunction(L, -1)) {
+			lua_pop(L, 1);
+			return NULL;
+		}
 		tidx = FUNCTION;
 		break;
 	case LUA_TTHREAD:
@@ -95,6 +113,7 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 		tidx = USERDATA;
 		break;
 	default:
+		lua_pop(L, 1);
 		return NULL;
 	}
 
@@ -217,11 +236,6 @@ mark_function(lua_State *L, lua_State *dL, const void * parent, const char *desc
 		mark_object(L, dL, t, name[0] ? name : "[upvalue]");
 	}
 	if (lua_iscfunction(L,-1)) {
-		if (i==1) {
-			// light c function
-			lua_pushnil(dL);
-			lua_rawsetp(dL, FUNCTION, t);
-		}
 		lua_pop(L,1);
 	} else {
 		lua_Debug ar;
