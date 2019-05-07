@@ -242,6 +242,7 @@ mark_function(lua_State *L, lua_State *dL, const void * parent, const char *desc
 		lua_getinfo(L, ">S", &ar);
 		luaL_Buffer b;
 		luaL_buffinit(dL, &b);
+		luaL_addstring(&b, "func: ");
 		luaL_addstring(&b, ar.short_src);
 		char tmp[16];
 		sprintf(tmp,":%d",ar.linedefined);
@@ -298,6 +299,7 @@ mark_thread(lua_State *L, lua_State *dL, const void * parent, const char *desc) 
 
 		++level;
 	}
+	luaL_addstring(&b, "thread: ");
 	luaL_pushresult(&b);
 	lua_rawsetp(dL, SOURCE, t);
 	lua_pop(L,1);
