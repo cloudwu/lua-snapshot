@@ -138,22 +138,22 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 }
 
 static const char *
-keystring(lua_State *L, int index, char * buffer) {
+keystring(lua_State *L, int index, char * buffer, size_t size) {
 	int t = lua_type(L,index);
 	switch (t) {
 	case LUA_TSTRING:
 		return lua_tostring(L,index);
 	case LUA_TNUMBER:
-		sprintf(buffer,"[%lg]",lua_tonumber(L,index));
+		snprintf(buffer, size, "[%lg]",lua_tonumber(L,index));
 		break;
 	case LUA_TBOOLEAN:
-		sprintf(buffer,"[%s]",lua_toboolean(L,index) ? "true" : "false");
+		snprintf(buffer, size, "[%s]",lua_toboolean(L,index) ? "true" : "false");
 		break;
 	case LUA_TNIL:
-		sprintf(buffer,"[nil]");
+		snprintf(buffer, size, "[nil]");
 		break;
 	default:
-		sprintf(buffer,"[%s:%p]",lua_typename(L,t),lua_topointer(L,index));
+		snprintf(buffer, size, "[%s:%p]",lua_typename(L,t),lua_topointer(L,index));
 		break;
 	}
 	return buffer;
@@ -191,7 +191,7 @@ mark_table(lua_State *L, lua_State *dL, const void * parent, const char * desc) 
 			lua_pop(L,1);
 		} else {
 			char temp[32];
-			const char * desc = keystring(L, -2, temp);
+			const char * desc = keystring(L, -2, temp, sizeof(temp));
 			mark_object(L, dL, t , desc);
 		}
 		if (!weakk) {
@@ -342,7 +342,7 @@ count_table(lua_State *L, int idx) {
 static void
 gen_table_desc(lua_State *dL, luaL_Buffer *b, const void * parent, const char *desc) {
 	char tmp[32];
-	size_t l = sprintf(tmp,"%p : ",parent);
+	size_t l = snprintf(tmp, sizeof(tmp), "%p : ",parent);
 	luaL_addlstring(b, tmp, l);
 	luaL_addstring(b, desc);
 	luaL_addchar(b, '\n');
