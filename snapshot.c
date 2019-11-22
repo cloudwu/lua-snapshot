@@ -216,7 +216,7 @@ mark_userdata(lua_State *L, lua_State *dL, const void * parent, const char *desc
 	if (lua_isnil(L,-1)) {
 		lua_pop(L,2);
 	} else {
-		mark_table(L, dL, t, "[uservalue]");
+		mark_object(L, dL, t, "[uservalue]");
 		lua_pop(L,1);
 	}
 }
