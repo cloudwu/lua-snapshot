@@ -47,23 +47,9 @@ mark_function_env(lua_State *L, lua_State *dL, const void * t) {
 	}
 }
 
-// lua 5.1 has no light c function
-#define is_lightcfunction(L, idx) (0)
-
 #else
 
 #define mark_function_env(L,dL,t)
-
-static int
-is_lightcfunction(lua_State *L, int idx) {
-	if (lua_iscfunction(L, idx)) {
-		if (lua_getupvalue(L, idx, 1) == NULL) {
-			return 1;
-		}
-		lua_pop(L, 1);
-	}
-	return 0;
-}
 
 #endif
 
@@ -77,6 +63,31 @@ is_lightcfunction(lua_State *L, int idx) {
 #define THREAD 4
 #define USERDATA 5
 #define MARK 6
+
+static bool
+ignore(lua_State *L) {
+	lua_getfield(L,LUA_REGISTRYINDEX,"ignore_handle");
+	if (lua_isnil(L,-1)) {
+		lua_pop(L,1);
+		return false;
+	}
+	int handle = (int)lua_tointeger(L,-1);
+	lua_pop(L,1);
+	lua_rawgeti(L,LUA_REGISTRYINDEX,handle);
+	if (lua_isnil(L,-1)) {
+		lua_pop(L,1);
+		return false;
+	}
+
+	lua_pushvalue(L,-2);
+	if (lua_pcall(L,1,1,0) != LUA_OK) {
+		lua_pop(L,1);
+		return false;
+	}
+	bool ok = lua_toboolean(L,-1);
+	lua_pop(L,1);
+	return ok;
+}
 
 static bool
 ismarked(lua_State *dL, const void *p) {
@@ -100,10 +111,6 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 		tidx = TABLE;
 		break;
 	case LUA_TFUNCTION:
-		if (is_lightcfunction(L, -1)) {
-			lua_pop(L, 1);
-			return NULL;
-		}
 		tidx = FUNCTION;
 		break;
 	case LUA_TTHREAD:
@@ -113,10 +120,12 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 		tidx = USERDATA;
 		break;
 	default:
-		lua_pop(L, 1);
 		return NULL;
 	}
-
+	if (ignore(L)) {
+		lua_pop(L,1);
+		return NULL;
+	}
 	const void * p = lua_topointer(L, -1);
 	if (ismarked(dL, p)) {
 		lua_rawgetp(dL, tidx, p);
@@ -133,27 +142,26 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 	lua_pushstring(dL,desc);
 	lua_rawsetp(dL, -2, parent);
 	lua_rawsetp(dL, tidx, p);
-
 	return p;
 }
 
 static const char *
-keystring(lua_State *L, int index, char * buffer, size_t size) {
+keystring(lua_State *L, int index, char * buffer) {
 	int t = lua_type(L,index);
 	switch (t) {
 	case LUA_TSTRING:
 		return lua_tostring(L,index);
 	case LUA_TNUMBER:
-		snprintf(buffer, size, "[%lg]",lua_tonumber(L,index));
+		sprintf(buffer,"[%lg]",lua_tonumber(L,index));
 		break;
 	case LUA_TBOOLEAN:
-		snprintf(buffer, size, "[%s]",lua_toboolean(L,index) ? "true" : "false");
+		sprintf(buffer,"[%s]",lua_toboolean(L,index) ? "true" : "false");
 		break;
 	case LUA_TNIL:
-		snprintf(buffer, size, "[nil]");
+		sprintf(buffer,"[nil]");
 		break;
 	default:
-		snprintf(buffer, size, "[%s:%p]",lua_typename(L,t),lua_topointer(L,index));
+		sprintf(buffer,"[%s:%p]",lua_typename(L,t),lua_topointer(L,index));
 		break;
 	}
 	return buffer;
@@ -191,7 +199,7 @@ mark_table(lua_State *L, lua_State *dL, const void * parent, const char * desc) 
 			lua_pop(L,1);
 		} else {
 			char temp[32];
-			const char * desc = keystring(L, -2, temp, sizeof(temp));
+			const char * desc = keystring(L, -2, temp);
 			mark_object(L, dL, t , desc);
 		}
 		if (!weakk) {
@@ -216,7 +224,7 @@ mark_userdata(lua_State *L, lua_State *dL, const void * parent, const char *desc
 	if (lua_isnil(L,-1)) {
 		lua_pop(L,2);
 	} else {
-		mark_object(L, dL, t, "[uservalue]");
+		mark_table(L, dL, t, "[uservalue]");
 		lua_pop(L,1);
 	}
 }
@@ -236,6 +244,11 @@ mark_function(lua_State *L, lua_State *dL, const void * parent, const char *desc
 		mark_object(L, dL, t, name[0] ? name : "[upvalue]");
 	}
 	if (lua_iscfunction(L,-1)) {
+		if (i==1) {
+			// light c function
+			lua_pushnil(dL);
+			lua_rawsetp(dL, FUNCTION, t);
+		}
 		lua_pop(L,1);
 	} else {
 		lua_Debug ar;
@@ -305,7 +318,7 @@ mark_thread(lua_State *L, lua_State *dL, const void * parent, const char *desc) 
 	lua_pop(L,1);
 }
 
-static void 
+static void
 mark_object(lua_State *L, lua_State *dL, const void * parent, const char *desc) {
 	luaL_checkstack(L, LUA_MINSTACK, NULL);
 	int t = lua_type(L, -1);
@@ -342,7 +355,7 @@ count_table(lua_State *L, int idx) {
 static void
 gen_table_desc(lua_State *dL, luaL_Buffer *b, const void * parent, const char *desc) {
 	char tmp[32];
-	size_t l = snprintf(tmp, sizeof(tmp), "%p : ",parent);
+	size_t l = sprintf(tmp,"%p : ",parent);
 	luaL_addlstring(b, tmp, l);
 	luaL_addstring(b, desc);
 	luaL_addchar(b, '\n');
@@ -406,6 +419,24 @@ gen_result(lua_State *L, lua_State *dL) {
 
 static int
 snapshot(lua_State *L) {
+	int n = lua_gettop(L);
+	if (n == 1) {
+		lua_getfield(L,LUA_REGISTRYINDEX,"ignore_handle");
+		int handle = LUA_NOREF;
+		if (!lua_isnil(L,-1)) {
+			handle = (int)lua_tointeger(L,-1);
+		}
+		luaL_unref(L,LUA_REGISTRYINDEX,handle);
+		lua_pop(L,1);
+		if (lua_isfunction(L,1)) {
+			handle = luaL_ref(L, LUA_REGISTRYINDEX);
+			lua_pushinteger(L,handle);
+			lua_setfield(L,LUA_REGISTRYINDEX,"ignore_handle");
+		} else {
+			lua_pop(L,1);
+		}
+		return 0;
+	}
 	int i;
 	lua_State *dL = luaL_newstate();
 	for (i=0;i<MARK;i++) {

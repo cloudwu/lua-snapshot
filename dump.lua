@@ -34,17 +34,49 @@ end
 local co = coroutine.create(function ()
     print("hello world")
 end)
-
 local S2 = snapshot()
 
 local diff = {}
 for k,v in pairs(S2) do
-	if not S1[k] then
+    if not S1[k] then
         diff[k] = v
-	end
+    end
 end
 
 print_r(diff)
+
+print("===========================")
+local player1 = {tag = "player",id = 1}
+local player2 = {tag = "player",id = 2}
+local player11 = {tag = "player",id = 11}
+local test = function ()
+    print("test")
+end
+snapshot(function (obj)
+    if obj == _G or obj == debug.getregistry() then
+        return false
+    end
+    if type(obj) == "table" and obj.tag == "player" then
+        if obj.id > 10 then
+            return true
+        else
+            return false
+        end
+    end
+    return false
+end)
+local S3 = snapshot()
+local diff23 = {}
+for k,v in pairs(S3) do
+    if not S2[k] then
+        diff23[k] = v
+    end
+end
+
+print_r(diff23)
+snapshot(false)
+
+
 print("===========================")
 
 local result = construct_indentation(diff)
