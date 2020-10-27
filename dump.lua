@@ -52,7 +52,7 @@ local player11 = {tag = "player",id = 11}
 local test = function ()
     print("test")
 end
-snapshot(function (obj)
+local S3 = snapshot(function (obj)
     if obj == _G or obj == debug.getregistry() then
         return false
     end
@@ -65,7 +65,6 @@ snapshot(function (obj)
     end
     return false
 end)
-local S3 = snapshot()
 local diff23 = {}
 for k,v in pairs(S3) do
     if not S2[k] then
@@ -74,8 +73,6 @@ for k,v in pairs(S3) do
 end
 
 print_r(diff23)
-snapshot(false)
-
 
 print("===========================")
 

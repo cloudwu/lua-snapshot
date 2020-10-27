@@ -122,10 +122,6 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 	default:
 		return NULL;
 	}
-	if (ignore(L)) {
-		lua_pop(L,1);
-		return NULL;
-	}
 	const void * p = lua_topointer(L, -1);
 	if (ismarked(dL, p)) {
 		lua_rawgetp(dL, tidx, p);
@@ -137,7 +133,10 @@ readobject(lua_State *L, lua_State *dL, const void *parent, const char *desc) {
 		lua_pop(L,1);
 		return NULL;
 	}
-
+	if (ignore(L)) {
+		lua_pop(L,1);
+		return NULL;
+	}
 	lua_newtable(dL);
 	lua_pushstring(dL,desc);
 	lua_rawsetp(dL, -2, parent);
@@ -419,10 +418,10 @@ gen_result(lua_State *L, lua_State *dL) {
 
 static int
 snapshot(lua_State *L) {
+	int handle = LUA_NOREF;
 	int n = lua_gettop(L);
 	if (n == 1) {
 		lua_getfield(L,LUA_REGISTRYINDEX,"ignore_handle");
-		int handle = LUA_NOREF;
 		if (!lua_isnil(L,-1)) {
 			handle = (int)lua_tointeger(L,-1);
 		}
@@ -435,7 +434,6 @@ snapshot(lua_State *L) {
 		} else {
 			lua_pop(L,1);
 		}
-		return 0;
 	}
 	int i;
 	lua_State *dL = luaL_newstate();
@@ -446,6 +444,7 @@ snapshot(lua_State *L) {
 	mark_table(L, dL, NULL, "[registry]");
 	gen_result(L, dL);
 	lua_close(dL);
+	luaL_unref(L,LUA_REGISTRYINDEX,handle);
 	return 1;
 }
 
