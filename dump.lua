@@ -1,7 +1,5 @@
 local snapshot = require "snapshot"
 local snapshot_utils = require "snapshot_utils"
-local construct_indentation = snapshot_utils.construct_indentation
-local print_r = require "print_r"
 
 local S1 = snapshot()
 
@@ -16,7 +14,7 @@ local tmp = {
     player2 = {
         roleid = 2,
     },
-    [3] = {
+    [6729207776230248443] = {
         player1 = 1,
     },
 }
@@ -25,6 +23,8 @@ local a = {}
 local c = {}
 a.b = c
 c.d = a
+g_var = {}
+local d = g_var
 
 local msg = "bar"
 local foo = function()
@@ -36,23 +36,14 @@ local co = coroutine.create(function ()
 end)
 local S2 = snapshot()
 
-local diff = {}
-for k,v in pairs(S2) do
-    if not S1[k] then
-        diff[k] = v
-    end
-end
+print(snapshot_utils.dump(snapshot_utils.diff(S1,S2,true)))
+S1 = nil
 
-print_r(diff)
-
-print("===========================")
+print("=========test ignore function=========")
 local player1 = {tag = "player",id = 1}
 local player2 = {tag = "player",id = 2}
 local player11 = {tag = "player",id = 11}
-local test = function ()
-    print("test")
-end
-local S3 = snapshot(function (obj)
+local function ignore(obj)
     if obj == _G or obj == debug.getregistry() then
         return false
     end
@@ -64,17 +55,19 @@ local S3 = snapshot(function (obj)
         end
     end
     return false
-end)
-local diff23 = {}
-for k,v in pairs(S3) do
-    if not S2[k] then
-        diff23[k] = v
-    end
 end
+local S3 = snapshot(ignore)
+print(snapshot_utils.dump(snapshot_utils.diff(S2,S3,true)))
+S3 = nil
 
-print_r(diff23)
+print("=========test refcount topN=========")
+--snapshot_utils.omit_excess_refrence = false
+local topN = 3
+local S4 = snapshot()
+print(snapshot_utils.dump(snapshot_utils.refcount_topN(topN,S4,true)))
+S4 = nil
 
-print("===========================")
-
-local result = construct_indentation(diff)
-print_r(result)
+print("=========test tablecount topN=========")
+local S5 = snapshot()
+print(snapshot_utils.dump(snapshot_utils.tablecount_topN(topN,S5,true)))
+S5 = nil
