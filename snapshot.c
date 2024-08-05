@@ -287,7 +287,8 @@ mark_thread(lua_State *L, lua_State *dL, const void * parent, const char *desc) 
 		}
 
 		int i,j;
-		for (j=1;j>-1;j-=2) {
+		// read locals (1,2 ...) and varargs (-1, -2, ...)
+		for (j=1;j>=-1;j-=2) {
 			for (i=j;;i+=j) {
 				const char * name = lua_getlocal(cL, &ar, i);
 				if (name == NULL)
