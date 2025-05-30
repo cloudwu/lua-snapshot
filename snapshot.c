@@ -274,7 +274,7 @@ keystring(lua_State *L, int index, char * buffer) {
 		num = lua_tonumber(L,index);
 		if (inum == num && LUA_VERSION_NUM >= 503) {
 			#if defined(LUA_USE_WINDOWS)
-			sprintf(buffer,"[%I64]",inum);
+			sprintf(buffer,"[%I64d]",inum);
 			#else
 			sprintf(buffer,"[%lld]",(long long)inum);
 			#endif
@@ -429,7 +429,7 @@ mark_thread(lua_State *L, lua_State *dL, const void * refobj, int reftype,const 
 		}
 
 		int i,j;
-		for (j=1;j>-1;j-=2) {
+		for (j=1;j>=-1;j-=2) {
 			for (i=j;;i+=j) {
 				const char * name = lua_getlocal(cL, &ar, i);
 				if (name == NULL)
