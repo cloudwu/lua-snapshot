@@ -18,6 +18,10 @@ or
 
 make macosx
 
+Test
+====
+lua53.exe dump.lua
+
 Format
 ======
 ```
